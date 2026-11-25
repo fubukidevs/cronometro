@@ -263,6 +263,45 @@
       transition: width .35s ease;
     }
 
+    .history {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 22px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+    }
+
+    .history-copy { min-width: 0; }
+
+    .history-kicker {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--accent);
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .history-copy strong { display: block; font-size: 1rem; }
+    .history-copy small { display: block; margin-top: 5px; color: var(--muted); font-size: .78rem; }
+
+    .history-stats { display: grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); gap: 8px; }
+
+    .history-stat {
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.022);
+      text-align: center;
+    }
+
+    .history-stat strong { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+    .history-stat span { display: block; margin-top: 3px; color: var(--muted); font-size: .67rem; font-weight: 700; text-transform: uppercase; }
+
     .controls { display: grid; grid-template-columns: 1fr auto; gap: 12px; }
 
     .primary, .secondary {
@@ -308,6 +347,8 @@
       .metrics { gap: 7px; }
       .metric { padding: 13px 7px; }
       .metric span { font-size: .64rem; letter-spacing: .04em; }
+      .history { grid-template-columns: 1fr; gap: 13px; }
+      .history-stats { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -351,6 +392,18 @@
       <div class="track"><span id="overallBar"></span></div>
     </section>
 
+    <section class="history" aria-label="Histórico de dias concluídos">
+      <div class="history-copy">
+        <span class="history-kicker">Consistência</span>
+        <strong>Seu histórico</strong>
+        <small id="todayStatus">Treino de hoje pendente</small>
+      </div>
+      <div class="history-stats">
+        <div class="history-stat"><strong id="daysDone">0</strong><span>Dias concluídos</span></div>
+        <div class="history-stat"><strong id="currentStreak">0</strong><span>Sequência atual</span></div>
+      </div>
+    </section>
+
     <div class="controls">
       <button class="primary" id="mainButton" type="button">Começar treino</button>
       <button class="secondary" id="resetButton" type="button" aria-label="Reiniciar treino" title="Reiniciar treino">
@@ -375,6 +428,9 @@
       const elapsedEl = document.querySelector('#elapsed');
       const overallLabel = document.querySelector('#overallLabel');
       const overallBar = document.querySelector('#overallBar');
+      const daysDone = document.querySelector('#daysDone');
+      const currentStreak = document.querySelector('#currentStreak');
+      const todayStatus = document.querySelector('#todayStatus');
       const mainButton = document.querySelector('#mainButton');
       const resetButton = document.querySelector('#resetButton');
       const soundButton = document.querySelector('#soundButton');
@@ -393,6 +449,57 @@
       let soundOn = true;
       let audioContext = null;
       let wakeLock = null;
+
+      const HISTORY_KEY = 'ritmo-completed-days-v1';
+
+      function dateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function completedDays() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+          return [...new Set(saved.filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)))].sort();
+        } catch (_) {
+          return [];
+        }
+      }
+
+      function streakFor(days) {
+        const completedSet = new Set(days);
+        const cursor = new Date();
+        if (!completedSet.has(dateKey(cursor))) {
+          cursor.setDate(cursor.getDate() - 1);
+          if (!completedSet.has(dateKey(cursor))) return 0;
+        }
+        let streak = 0;
+        while (completedSet.has(dateKey(cursor))) {
+          streak += 1;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+      }
+
+      function renderHistory() {
+        const days = completedDays();
+        const finishedToday = days.includes(dateKey());
+        daysDone.textContent = days.length;
+        currentStreak.textContent = streakFor(days);
+        todayStatus.textContent = finishedToday ? 'Treino de hoje concluído' : 'Treino de hoje pendente';
+      }
+
+      function recordToday() {
+        const days = completedDays();
+        const today = dateKey();
+        if (!days.includes(today)) {
+          days.push(today);
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(days.sort()));
+        }
+        renderHistory();
+      }
 
       const icons = {
         on: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
@@ -447,7 +554,7 @@
             remaining = 0;
             beep('done');
             if (wakeLock) wakeLock.release().catch(() => {});
-            localStorage.setItem('ritmo-last-complete', new Date().toISOString().slice(0, 10));
+            recordToday();
             return;
           }
           if (rep < CONFIG.reps) {
@@ -580,6 +687,7 @@
       });
 
       soundButton.innerHTML = icons.on;
+      renderHistory();
       render();
     })();
   </script>
