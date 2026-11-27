@@ -303,9 +303,8 @@
       transition: transform .18s ease, background .18s ease, border-color .18s ease;
     }
 
-    .mark-done:hover:not(:disabled) { background: rgba(255,92,53,.23); border-color: rgba(255,92,53,.65); }
-    .mark-done:active:not(:disabled) { transform: scale(.98); }
-    .mark-done:disabled { color: var(--muted); background: rgba(255,255,255,.035); border-color: var(--line); cursor: default; }
+    .mark-done:hover { background: rgba(255,92,53,.23); border-color: rgba(255,92,53,.65); }
+    .mark-done:active { transform: scale(.98); }
 
     .history-stats { display: grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); gap: 8px; }
 
@@ -410,16 +409,16 @@
       <div class="track"><span id="overallBar"></span></div>
     </section>
 
-    <section class="history" aria-label="Histórico de dias concluídos">
+    <section class="history" aria-label="Histórico de conclusões">
       <div class="history-copy">
         <span class="history-kicker">Consistência</span>
         <strong>Seu histórico</strong>
-        <small id="todayStatus">Treino de hoje pendente</small>
-        <button class="mark-done" id="markDoneButton" type="button">Marcar dia como feito</button>
+        <small id="todayStatus">Nenhuma conclusão registrada hoje</small>
+        <button class="mark-done" id="markDoneButton" type="button">Adicionar conclusão de hoje</button>
       </div>
       <div class="history-stats">
-        <div class="history-stat"><strong id="daysDone">0</strong><span>Dias concluídos</span></div>
-        <div class="history-stat"><strong id="currentStreak">0</strong><span>Sequência atual</span></div>
+        <div class="history-stat"><strong id="daysDone">0</strong><span>Conclusões</span></div>
+        <div class="history-stat"><strong id="currentStreak">0</strong><span>Sequência em dias</span></div>
       </div>
     </section>
 
@@ -479,10 +478,10 @@
         return `${year}-${month}-${day}`;
       }
 
-      function completedDays() {
+      function completionRecords() {
         try {
           const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-          return [...new Set(saved.filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)))].sort();
+          return saved.filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day));
         } catch (_) {
           return [];
         }
@@ -504,22 +503,19 @@
       }
 
       function renderHistory() {
-        const days = completedDays();
-        const finishedToday = days.includes(dateKey());
-        daysDone.textContent = days.length;
-        currentStreak.textContent = streakFor(days);
-        todayStatus.textContent = finishedToday ? 'Treino de hoje concluído' : 'Treino de hoje pendente';
-        markDoneButton.disabled = finishedToday;
-        markDoneButton.textContent = finishedToday ? 'Dia já concluído ✓' : 'Marcar dia como feito';
+        const records = completionRecords();
+        const todayCount = records.filter(day => day === dateKey()).length;
+        daysDone.textContent = records.length;
+        currentStreak.textContent = streakFor(records);
+        todayStatus.textContent = todayCount === 0
+          ? 'Nenhuma conclusão registrada hoje'
+          : `${todayCount} ${todayCount === 1 ? 'conclusão registrada' : 'conclusões registradas'} hoje`;
       }
 
       function recordToday() {
-        const days = completedDays();
-        const today = dateKey();
-        if (!days.includes(today)) {
-          days.push(today);
-          localStorage.setItem(HISTORY_KEY, JSON.stringify(days.sort()));
-        }
+        const records = completionRecords();
+        records.push(dateKey());
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(records));
         renderHistory();
       }
 
