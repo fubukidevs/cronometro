@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0d10">
-  <meta name="description" content="Cronômetro guiado para 10 séries de 30 repetições.">
+  <meta name="description" content="Cronômetro guiado para 5 séries de 30 repetições.">
   <title>Ritmo — Cronômetro de treino</title>
   <style>
     :root {
@@ -289,6 +289,24 @@
     .history-copy strong { display: block; font-size: 1rem; }
     .history-copy small { display: block; margin-top: 5px; color: var(--muted); font-size: .78rem; }
 
+    .mark-done {
+      min-height: 38px;
+      margin-top: 12px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,92,53,.38);
+      border-radius: 11px;
+      color: #ff8a6e;
+      background: var(--accent-soft);
+      font-size: .78rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+
+    .mark-done:hover:not(:disabled) { background: rgba(255,92,53,.23); border-color: rgba(255,92,53,.65); }
+    .mark-done:active:not(:disabled) { transform: scale(.98); }
+    .mark-done:disabled { color: var(--muted); background: rgba(255,255,255,.035); border-color: var(--line); cursor: default; }
+
     .history-stats { display: grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); gap: 8px; }
 
     .history-stat {
@@ -381,9 +399,9 @@
       </div>
 
       <div class="metrics">
-        <div class="metric"><strong id="seriesMetric">1/10</strong><span>Série</span></div>
+        <div class="metric"><strong id="seriesMetric">1/5</strong><span>Série</span></div>
         <div class="metric"><strong id="repMetric">1/30</strong><span>Repetição</span></div>
-        <div class="metric"><strong id="doneMetric">0/300</strong><span>Concluídas</span></div>
+        <div class="metric"><strong id="doneMetric">0/150</strong><span>Concluídas</span></div>
       </div>
     </section>
 
@@ -397,6 +415,7 @@
         <span class="history-kicker">Consistência</span>
         <strong>Seu histórico</strong>
         <small id="todayStatus">Treino de hoje pendente</small>
+        <button class="mark-done" id="markDoneButton" type="button">Marcar dia como feito</button>
       </div>
       <div class="history-stats">
         <div class="history-stat"><strong id="daysDone">0</strong><span>Dias concluídos</span></div>
@@ -415,7 +434,7 @@
 
   <script>
     (() => {
-      const CONFIG = Object.freeze({ series: 10, reps: 30, work: 10, shortRest: 5, seriesRest: 120 });
+      const CONFIG = Object.freeze({ series: 5, reps: 30, work: 10, shortRest: 5, seriesRest: 120 });
       const totalReps = CONFIG.series * CONFIG.reps;
       const app = document.querySelector('#app');
       const phaseName = document.querySelector('#phaseName');
@@ -431,6 +450,7 @@
       const daysDone = document.querySelector('#daysDone');
       const currentStreak = document.querySelector('#currentStreak');
       const todayStatus = document.querySelector('#todayStatus');
+      const markDoneButton = document.querySelector('#markDoneButton');
       const mainButton = document.querySelector('#mainButton');
       const resetButton = document.querySelector('#resetButton');
       const soundButton = document.querySelector('#soundButton');
@@ -489,6 +509,8 @@
         daysDone.textContent = days.length;
         currentStreak.textContent = streakFor(days);
         todayStatus.textContent = finishedToday ? 'Treino de hoje concluído' : 'Treino de hoje pendente';
+        markDoneButton.disabled = finishedToday;
+        markDoneButton.textContent = finishedToday ? 'Dia já concluído ✓' : 'Marcar dia como feito';
       }
 
       function recordToday() {
@@ -674,6 +696,7 @@
       });
 
       resetButton.addEventListener('click', reset);
+      markDoneButton.addEventListener('click', recordToday);
       soundButton.addEventListener('click', () => {
         soundOn = !soundOn;
         soundButton.innerHTML = soundOn ? icons.on : icons.off;
